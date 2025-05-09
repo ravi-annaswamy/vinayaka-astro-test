@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinayaka Astro</title>
+  
+  <!-- Include scripts -->
+  <script src="js/constants.js"></script>
+  <script src="js/astro_calc.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/sunrise.js"></script>
+  <script src="js/dignity_and_table.js"></script>
+  <script src="js/dashas.js"></script>
+  <script src="js/date_utils.js"></script>
+  <script src="js/planets.js"></script>
+  <script src="js/planterms2.js"></script>
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- CSS styles -->
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 18px;
+    margin: 0;
+  }
+
+  /* Center the main Ganesha section and the Tamil verse */
+  .ganesha-section {
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 20px;
+  }
+  .ganesha-section img {
+    width: 100px;
+    height: 100px;
+  }
+
+  .chart-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+  }
+
+.chart-box {
+  flex: 1 1 300px; /* reduced from 400px */
+  min-width: 250px; /* reduced from 300px */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 5px; /* reduced from 10px */
+  box-sizing: border-box;
+}
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow-x: auto;
+    display: block;
+  }
+  th, td {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+    font-size: 14px;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+
+  label, select, input[type="checkbox"], button {
+    display: block;
+    width: 40%;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding: 10px;
+    font-size: 16px;
+  }
+  .form-control {
+    margin-bottom: 15px;
+  }
+
+  select#city {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  select#city:focus {
+    border-color: #6c63ff;
+    box-shadow: 0 0 5px rgba(108, 99, 255, 0.5);
+    background-color: #fff;
+    outline: none;
+  }
+  label[for="city"] {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+
+  /* Media query for small screens */
+  @media (max-width: 600px) {
+    th, td {
+      font-size: 12px;
+      padding: 5px;
+    }
+  }
+
+ .dasha-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  /* margin-top: 20px; --> removed */
+}
+.dasha-container table {
+  border-collapse: collapse;
+  min-width: 200px;
+}
+.dasha-container th, .dasha-container td {
+  border: 1px solid #dddddd;
+  padding: 6px;
+}
+.dasha-container th {
+  background: #f2f2f2;
+}
+  .dasha-container table tbody tr:hover {
+    background-color: #d0eed0;
+    cursor: pointer;
+  }
+
+.result-dasha-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+#result, #dashasContainer {
+  flex: 1 1 400px;
+  min-width: 300px;
+  padding: 10px; /* slight inside breathing room */
+  border: 1px solid #eeeeee; /* light gray border */
+  background-color: #fafafa; /* very soft background */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* optional subtle shadow */
+  border-radius: 8px; /* slightly rounded corners */
+}
+</style>
+
+
+
+  <script>
+    function setDateToday() {
+      var today = new Date();
+      var year = today.getFullYear();
+      var month = today.getMonth() + 1; // JavaScript months are 0-indexed
+      var day = today.getDate();
+      var hour = today.getHours();
+      var minute = today.getMinutes();
+
+      document.getElementById('year').value = year;
+      document.getElementById('month').value = month;
+      document.getElementById('day').value = day;
+      document.getElementById('hour').value = hour;
+      document.getElementById('minute').value = minute;
+    }
+
+function displayVedicInfo(year, month, day, hour, minute, city) {
+  const { sunriseStr, sunsetStr, sunriseMinutes, sunsetMinutes } =
+          getLocalSunriseSunset(year, month, day, city);
+
+  const dateStr = `${day}-${month}-${year}`;
+  const birthTimeStr = formatAMPM(hour, minute);
+
+  // Day of week 0=Sun…6=Sat in JS
+  const weekdayIndex = new Date(year, month-1, day).getDay();
+  const vedicWeekday = determineVedicWeekdayLocal(
+    hour, minute, sunriseMinutes, sunsetMinutes, weekdayIndex
+  );
+
+  document.getElementById('vedicInfo').innerHTML = `
+    தேதி: ${dateStr}, நேரம்: ${birthTimeStr},
+    சூரிய உதயம்: ${sunriseStr}, சூரிய அஸ்தமனம்: ${sunsetStr},
+    வைதீக நாள் பொழுது: ${vedicWeekday}
+  `;
+}
+
+
+
+    // Main driver function
+    function calculatePositions() {
+      var year = document.getElementById('year').value;
+      var month = document.getElementById('month').value;
+      var day = document.getElementById('day').value;
+      var hour = parseInt(document.getElementById('hour').value);
+      var minutes = parseInt(document.getElementById('minute').value);
+      var city = document.getElementById("city").value;
+      var cityInfo = getCityInfo(city);
+
+      if (!cityInfo) {
+        alert("City information not available.");
+        return;
+      }
+      var timeData = extractTimeData(hour, minutes, cityInfo);
+      var dateData = calculateDateData(year, month, day, timeData.time);
+
+      var planetaryPositions = calculatePlanetaryPositions(dateData.t, timeData, cityInfo);
+
+// 1. Determine Vedic period
+const { sunriseMinutes, sunsetMinutes } =
+      getLocalSunriseSunset(year, month, day, city);
+const birthMin = hour*60 + minutes;
+const weekdayIndex = new Date(year, month-1, day).getDay();
+const period = (birthMin >= sunriseMinutes && birthMin < sunsetMinutes)
+               ? 'day' : 'night';
+
+// 2. Lookup offset
+const offset = MAANTI_OFFSETS[weekdayIndex][period];
+
+// 3. Find Sun’s longitude
+const sunObj = planetaryPositions.find(p => p.name === 'சூரியன்');
+if (sunObj) {
+  const maantiLong = (sunObj.longitude + offset) % 360;
+
+  // 4. Build the Maanti object
+  const nak = calculateNakshatraPada(maantiLong);              // from dignities/table code :contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}
+  const signIdx = Math.floor(maantiLong / 30); 
+  const houseNum = (signIdx - Math.floor(sunObj.longitude/30) + 12)%12 + 1;
+
+  planetaryPositions.push({
+    name: 'மாந்தி',
+    longitude: parseFloat(maantiLong.toFixed(1)),
+    zodiacSign: indianZodiacTamil[signIdx],
+    nakshatraPada: nak.nakshatra + ' ' + nak.pada,
+    nakshatraLord: nakshatraLordsTamil[Math.floor(maantiLong/13.333)],
+    houseNumber: houseNum
+  });
+}
+
+      // Compute positions 12 hours later to check retrograde
+      var halfDayInT = 0.5 / 36525; // 0.5 day in Julian Centuries
+      var planetaryPositionsLater =
+          calculatePlanetaryPositions(dateData.t + halfDayInT, timeData, cityInfo);
+
+
+      displayChart(planetaryPositions, year, month, day, hour, minutes);
+
+      var navamsaPositions = calculateNavamsaPositions(planetaryPositions);
+      displayNavamsaChart(navamsaPositions, dateData);
+      displayVedicInfo(year, month, day, hour, minutes, city);
+
+      displayPlanetaryTable(planetaryPositions, planetaryPositionsLater);
+
+      displayDashas(planetaryPositions, dateData.jd);
+    }
+
+    // Extract and adjust time data
+function extractTimeData(hour, minutes, cityInfo) {
+  var zoneHours = parseFloat(cityInfo.timezone.hours) +
+                  parseFloat(cityInfo.timezone.minutes / 60);
+  if (cityInfo.timezone.direction === 'E') {
+    zoneHours *= -1;  
+  }
+  var time = parseFloat(hour) + parseFloat(minutes / 60) + zoneHours;
+  return { time: time, zoneHours: zoneHours };
+}
+
+    // Calculate Julian date/time factor
+    function calculateDateData(year, month, day, time) {
+      var jd = date2jul(month, day, year) + 0.5;
+      jd += time / 24.0;
+      var t = (jd - J2000) / 36525.0;
+      return { jd: jd, t: t };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      setDateToday();      // Sets date inputs to today's date on page load
+      calculatePositions(); // Calculates initial positions for today's date
+    });
+  </script>
+</head>
+
+<body>
+  <!-- Centered Ganesha image and requested verse lines -->
+  <div class="ganesha-section">
+    <img src="ganesha.jpg" alt="Ganesha">
+    <p>
+      || தத்துவ நிலையைத் தந்தெனை ஆண்ட<br>
+      வித்தக விநாயக நின் விரைகழல் சரணே ||
+    </p>
+  </div>
+
+  <h1>ஸ்ரீ கற்பக விநாயகர் - கிரக நிலை கணியன் (Central Tamilnadu)</h1>
+  <h3>தற்போதைய கிரக நிலை. தேவையான தேதி நேரம் மாற்றலாம் (1800-2200).</h3>
+
+  <!-- Form controls for date/time/city input -->
+  <div class="form-control">
+    <label for="year">Year (1800-2200):</label>
+    <select id="year">
+      <script>
+        for (let i = 1800; i <= 2200; i++) {
+          document.write('<option value="' + i + '">' + i + '</option>');
+        }
+      </script>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="month">Month:</label>
+    <select id="month">
+      <option value="1">January</option>
+      <option value="2">February</option>
+      <option value="3">March</option>
+      <option value="4">April</option>
+      <option value="5">May</option>
+      <option value="6">June</option>
+      <option value="7">July</option>
+      <option value="8">August</option>
+      <option value="9">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="day">Day:</label>
+    <select id="day">
+      <script>
+        for (let i = 1; i <= 31; i++) {
+          document.write('<option value="' + i + '">' + i + '</option>');
+        }
+      </script>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="hour">Hour (0-23):</label>
+    <select id="hour">
+      <script>
+        for (let i = 0; i < 24; i++) {
+          document.write('<option value="' + i + '">' + i + '</option>');
+        }
+      </script>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="minute">Minute (0-59):</label>
+    <select id="minute">
+      <script>
+        for (let i = 0; i < 60; i++) {
+          document.write('<option value="' + i + '">' + i + '</option>');
+        }
+      </script>
+    </select>
+  </div>
+
+<div class="form-control">
+  <label for="city">City:</label>
+  <select id="city">
+    <option value="Chennai">Chennai</option>
+    <option value="Tiruchirappalli">Tiruchirappalli</option>
+    <option value="Madurai">Madurai</option>
+    <option value="Vellore">Vellore</option>
+    <option value="Salem">Salem</option>
+    <option value="Coimbatore">Coimbatore</option>
+    <option value="Krishnagiri">Krishnagiri</option>
+    <option value="Tirunelveli">Tirunelveli</option>
+    <option value="Kanyakumari">Kanyakumari</option>
+    <option value="Hyderabad">Hyderabad</option>
+    <option value="Bengaluru">Bengaluru</option>
+    <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+    <option value="New Delhi">New Delhi</option>
+    <option value="Mumbai">Mumbai</option>
+    <option value="Kolkata">Kolkata</option>
+    <option value="London">London</option>
+    <option value="New York, NY">New York</option>
+    <option value="Westlake, OH">Westlake</option>
+    <option value="San Francisco, CA">San Francisco</option>
+    <option value="Chicago, IL">Chicago</option>
+    <option value="Houston, TX">Houston</option>
+    <option value="Phoenix, AZ">Phoenix</option>
+  </select>
+</div>
+
+  <!-- Button to trigger calculation -->
+  <div class="form-control">
+    <button onclick="calculatePositions()"><b>கணக்கிடுக</b></button>
+  </div>
+
+  <!-- Chart containers -->
+  <div class="chart-container">
+    <div id="chartContainer" class="chart-box">
+      <!-- SVG Rasi chart inserted here -->
+    </div>
+    <div id="navamsaChartContainer" class="chart-box">
+      <!-- SVG Navamsa chart inserted here -->
+    </div>
+  </div>
+  <div id="vedicInfo" style="text-align:center; margin-top:20px; font-size:16px; font-family:Arial, sans-serif;">
+  </div>
+
+
+<div class="result-dasha-container">
+  <div id="result"></div>
+  <div id="dashasContainer"></div>
+</div>
+
+</body>
+</html>
