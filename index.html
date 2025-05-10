@@ -182,80 +182,102 @@ function displayVedicInfo(year, month, day, hour, minute, city) {
   );
 
   document.getElementById('vedicInfo').innerHTML = `
-    தேதி: ${dateStr}, நேரம்: ${birthTimeStr},
-    சூரிய உதயம்: ${sunriseStr}, சூரிய அஸ்தமனம்: ${sunsetStr},
-    வைதீக நாள் பொழுது: ${vedicWeekday}
+    பிறந்த தேதி: ${dateStr}, நேரம்: ${birthTimeStr},
+    சூரிய உதயம்: ${sunriseStr}, அஸ்தமனம்: ${sunsetStr},
+    வேதவழி நாள் பொழுது: ${vedicWeekday}
   `;
 }
 
 
 
     // Main driver function
-    function calculatePositions() {
-      var year = document.getElementById('year').value;
-      var month = document.getElementById('month').value;
-      var day = document.getElementById('day').value;
-      var hour = parseInt(document.getElementById('hour').value);
-      var minutes = parseInt(document.getElementById('minute').value);
-      var city = document.getElementById("city").value;
-      var cityInfo = getCityInfo(city);
 
-      if (!cityInfo) {
-        alert("City information not available.");
-        return;
-      }
-      var timeData = extractTimeData(hour, minutes, cityInfo);
-      var dateData = calculateDateData(year, month, day, timeData.time);
+// Refactored calculatePositions with helpers and ES6 syntax
+function calculatePositions() {
+  // 1. Gather inputs
+  const year    = Number(document.getElementById('year').value);
+  const month   = Number(document.getElementById('month').value);
+  const day     = Number(document.getElementById('day').value);
+  const hour    = Number(document.getElementById('hour').value);
+  const minutes = Number(document.getElementById('minute').value);
+  const city    = document.getElementById('city').value;
 
-      var planetaryPositions = calculatePlanetaryPositions(dateData.t, timeData, cityInfo);
+  const cityInfo = getCityInfo(city);
+  if (!cityInfo) {
+    alert('City information not available.');
+    return;
+  }
 
-// 1. Determine Vedic period
-const { sunriseMinutes, sunsetMinutes } =
-      getLocalSunriseSunset(year, month, day, city);
-const birthMin = hour*60 + minutes;
-const weekdayIndex = new Date(year, month-1, day).getDay();
-const period = (birthMin >= sunriseMinutes && birthMin < sunsetMinutes)
-               ? 'day' : 'night';
+  // 2. Compute time and date data
+  const timeData = extractTimeData(hour, minutes, cityInfo);
+  const dateData = calculateDateData(year, month, day, timeData.time);
 
-// 2. Lookup offset
-const offset = MAANTI_OFFSETS[weekdayIndex][period];
+  // 3. Calculate planetary positions for birth moment
+  const planetaryPositions = calculatePlanetaryPositions(dateData.t, timeData, cityInfo);
 
-// 3. Find Sun’s longitude
-const sunObj = planetaryPositions.find(p => p.name === 'சூரியன்');
-if (sunObj) {
-  const maantiLong = (sunObj.longitude + offset) % 360;
+  // 4. Add Maanti position
+  addMaantiPosition(
+    planetaryPositions,
+    { year, month, day, hour, minutes, city },
+    planetaryPositions
+  );
 
-  // 4. Build the Maanti object
-  const nak = calculateNakshatraPada(maantiLong);              // from dignities/table code :contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}
-  const signIdx = Math.floor(maantiLong / 30); 
-  const houseNum = (signIdx - Math.floor(sunObj.longitude/30) + 12)%12 + 1;
+  // 5. Compute positions 12 hours later for retrograde check
+  const halfDayInCenturies = 0.5 / 36525;
+  const planetaryPositionsLater = calculatePlanetaryPositions(
+    dateData.t + halfDayInCenturies,
+    timeData,
+    cityInfo
+  );
 
-  planetaryPositions.push({
+  // 6. Display charts and tables
+  displayChart(planetaryPositions, year, month, day, hour, minutes);
+  const navamsaPositions = calculateNavamsaPositions(planetaryPositions);
+  displayNavamsaChart(navamsaPositions, dateData);
+  displayVedicInfo(year, month, day, hour, minutes, city);
+  displayPlanetaryTable(planetaryPositions, planetaryPositionsLater);
+  displayDashas(planetaryPositions, dateData.jd);
+}
+
+// Helper to compute and append Maanti
+function addMaantiPosition(targetArray, birthInfo, positions) {
+  const { year, month, day, hour, minutes, city } = birthInfo;
+  const { sunriseMinutes, sunsetMinutes } = getLocalSunriseSunset(year, month, day, city);
+  const birthMin = hour * 60 + minutes;
+  const calendarWeekday = new Date(year, month - 1, day).getDay();
+
+  // Determine Vedic weekday index and period
+  let vedicWeekday = calendarWeekday;
+  let period = 'night';
+
+  if (birthMin >= sunriseMinutes && birthMin < sunsetMinutes) {
+    period = 'day';
+  } else if (birthMin < sunriseMinutes) {
+    vedicWeekday = (calendarWeekday + 6) % 7;
+  }
+
+  // Lookup offset and compute longitude
+  const offset = MAANTI_OFFSETS[vedicWeekday][period];
+  const sun = positions.find(p => p.name === 'சூரியன்');
+  if (!sun) return;
+
+  const rawLong = (sun.longitude + offset) % 360;
+  const maantiLong = (rawLong + 360) % 360; // ensure positive
+
+  // Derive nakshatra, sign, pada, lord, and house
+  const nak = calculateNakshatraPada(maantiLong);
+  const signIdx = Math.floor(maantiLong / 30);
+  const houseNum = ((signIdx - Math.floor(sun.longitude / 30) + 12) % 12) + 1;
+
+  targetArray.push({
     name: 'மாந்தி',
-    longitude: parseFloat(maantiLong.toFixed(1)),
+    longitude: Number(maantiLong.toFixed(1)),
     zodiacSign: indianZodiacTamil[signIdx],
-    nakshatraPada: nak.nakshatra + ' ' + nak.pada,
-    nakshatraLord: nakshatraLordsTamil[Math.floor(maantiLong/13.333)],
+    nakshatraPada: `${nak.nakshatra} ${nak.pada}`,
+    nakshatraLord: nakshatraLordsTamil[Math.floor(maantiLong / 13.333)],
     houseNumber: houseNum
   });
 }
-
-      // Compute positions 12 hours later to check retrograde
-      var halfDayInT = 0.5 / 36525; // 0.5 day in Julian Centuries
-      var planetaryPositionsLater =
-          calculatePlanetaryPositions(dateData.t + halfDayInT, timeData, cityInfo);
-
-
-      displayChart(planetaryPositions, year, month, day, hour, minutes);
-
-      var navamsaPositions = calculateNavamsaPositions(planetaryPositions);
-      displayNavamsaChart(navamsaPositions, dateData);
-      displayVedicInfo(year, month, day, hour, minutes, city);
-
-      displayPlanetaryTable(planetaryPositions, planetaryPositionsLater);
-
-      displayDashas(planetaryPositions, dateData.jd);
-    }
 
     // Extract and adjust time data
 function extractTimeData(hour, minutes, cityInfo) {
