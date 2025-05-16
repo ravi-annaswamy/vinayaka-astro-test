@@ -16,7 +16,6 @@ function showstring(a) {
     document.write(a)
 }
 function get_jul_day(e, b, d) {
-    console.log(e + "/" + b + "/" + d);
     var a, c;
     a = Math.floor(12 * (d + 4800) + e - 3);
     c = Math.floor((2 * Math.floor(a % 12) + 7 + 365 * a) / 12);
@@ -24,7 +23,6 @@ function get_jul_day(e, b, d) {
     if (c > 2299171) {
         c += Math.floor(a / 4800) - Math.floor(a / 1200) + 38
     }
-    console.log(parseFloat(c));
     return Math.floor(c)
 }
 function getayan(a) {
