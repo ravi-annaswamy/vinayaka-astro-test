@@ -266,7 +266,8 @@ function showBhuktis(mahadashaIndex) {
       ? jul2dateDDMMYYYY(birthJD + subs[j].endOffset)
       : '---';
 
-    const rowStyle = (j === currBhukti) ? ' style="background-color: #ccffcc;"' : '';
+    const rowStyle = (j === currBhukti || (currBhukti === -1 && j === 0)) ?
+      ' style="background-color: #ccffcc;"' : '';
 
     bhuktiTable += `<tr${rowStyle} onclick="showAntaras(${mahadashaIndex}, ${j})">
       <td>${subs[j].lord}</td>
@@ -283,10 +284,12 @@ function showBhuktis(mahadashaIndex) {
     dashaContainer.children[1].innerHTML = bhuktiTable;
   }
 
-  // Automatically refresh Antara for the currently running Bhukti or clear if none
+  // Automatically show Antara for current Bhukti, or first Bhukti if none running
   const antaraDiv = document.getElementById('antaraContainer');
   if (currBhukti >= 0) {
     showAntaras(mahadashaIndex, currBhukti);
+  } else if (subs.length > 0) {
+    showAntaras(mahadashaIndex, 0);
   } else {
     antaraDiv.innerHTML = '';
   }
@@ -310,7 +313,7 @@ function showAntaras(mahadashaIndex, bhuktiIndex) {
     offsetNow >= antara.startOffset && offsetNow < antara.endOffset
   );
 
-  let antaraTable = `<h4>${currentDashaLord} - ${currentBhuktiLord} அந்தரம் வரிசை</h4>
+  let antaraTable = `<h4>${currentDashaLord}/${currentBhuktiLord} : அந்தர வரிசை</h4>
     <table>
       <thead>
         <tr>
@@ -349,19 +352,7 @@ function showAntaras(mahadashaIndex, bhuktiIndex) {
 }
 
 
-/**
- * Example function to display dashas in older style.
- */
-function displayDashasOld(planetaryPositions, jd) {
-  let moon = planetaryPositions.find(p => p.name === 'சந்திரன்');
-  if (!moon) {
-    document.getElementById('dashasContainer').innerHTML = 'Moon position not found.';
-    return;
-  }
-  let nd = calcdasha(moon.longitude);
-  let dashasHtml = getDashasTam(jd, nd);
-  document.getElementById('dashasContainer').innerHTML = dashasHtml;
-}
+
 
 /**
  * Final display function for dashas using the new approach.
