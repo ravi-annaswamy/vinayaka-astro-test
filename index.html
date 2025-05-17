@@ -7,7 +7,6 @@
   <!-- Include scripts -->
   <script src="js/constants.js"></script>
   <script src="js/astro_calc.js"></script>
-  <script src="js/panchanga.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/cities.js"></script>
   <script src="js/sunrise.js"></script>
@@ -16,8 +15,6 @@
   <script src="js/date_utils.js"></script>
   <script src="js/planets.js"></script>
   <script src="js/planterms2.js"></script>
-  <script src="js/highlighting.js"></script>
-
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
@@ -46,15 +43,6 @@
     gap: 2px;
     justify-content: center;
   }
-
-/* Prevent SVG text from blocking clicks on the underlying house rectangles */
-#chartContainer svg text {
-  pointer-events: none;
-}
-
-#chartContainer svg text {
-  transition: fill 0.2s ease, opacity 0.2s ease;
-}
 
 .chart-box {
   flex: 1 1 300px; /* reduced from 400px */
@@ -121,28 +109,6 @@
     }
   }
 
-#houseInfoPanel table {
-  width: 100%;
-  border-collapse: collapse;
-  display: block;          /* ensure horizontal scroll if needed */
-}
-
-#houseInfoPanel th, 
-#houseInfoPanel td {
-  border: 1px solid #ddd;
-  text-align: left;
-  padding: 6px;
-  font-size: 14px;
-}
-
-#houseInfoPanel th {
-  background-color: #f2f2f2;
-  position: sticky;        /* keep headers visible */
-  top: 0;
-  z-index: 1;
-}
-
-
  .dasha-container {
   display: flex;
   flex-wrap: wrap;
@@ -173,15 +139,18 @@
   align-items: flex-start;
   margin-top: 20px;
 }
-#result, #dashasContainer {
-  flex: 1 1 400px;
-  min-width: 300px;
-  padding: 10px; /* slight inside breathing room */
-  border: 1px solid #eeeeee; /* light gray border */
-  background-color: #fafafa; /* very soft background */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* optional subtle shadow */
-  border-radius: 8px; /* slightly rounded corners */
+
+#result, #dashasContainer, #antaraContainer {
+  flex: 1 1 250px;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid #eeeeee;
+  background-color: #fafafa;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
 }
+
 </style>
 
 
@@ -216,9 +185,9 @@ function displayVedicInfo(year, month, day, hour, minute, city) {
   );
 
   document.getElementById('vedicInfo').innerHTML = `
-    <p>${dateStr} ${birthTimeStr}    |    
-    சூரிய உதயம்: ${sunriseStr}, அஸ்தமனம்: ${sunsetStr}    |    
-    ${vedicWeekday}</p>
+    <p>பிறந்த தேதி: ${dateStr}, நேரம்: ${birthTimeStr}</p>
+    <p>சூரிய உதயம்: ${sunriseStr}, அஸ்தமனம்: ${sunsetStr}</p>
+    <p>வேதவழி நாள் பொழுது: ${vedicWeekday}</p>
 ` ;
 }
 
@@ -264,30 +233,8 @@ function calculatePositions() {
     cityInfo
   );
 
-  // Panchanga Integration Starts Here
-  const sunPosition = planetaryPositions.find(p => p.name === 'சூரியன்').longitude;
-  const moonPosition = planetaryPositions.find(p => p.name === 'சந்திரன்').longitude;
-
-  const sunSpeed = 1;      // Approximate daily speed of Sun (degrees/day)
-  const moonSpeed = 13.3;  // Approximate daily speed of Moon (degrees/day)
-
-  const timeZone = cityInfo.timezone.hours + cityInfo.timezone.minutes / 60;
-  const adjustedTimeZone = cityInfo.timezone.direction === 'E' ? -timeZone : timeZone;
-
-  const panchanga = calculatePanchanga(sunPosition, moonPosition, sunSpeed, moonSpeed, adjustedTimeZone);
-
-  // Display Results
-  displayPanchang(panchanga.thithi, panchanga.yoga, panchanga.karana, panchanga.paksha, panchanga.nakshatraInfo);
-
-
   // 6. Display charts and tables
   displayChart(planetaryPositions, year, month, day, hour, minutes);
-  if (window.computeHighlightData) {
-    computeHighlightData(planetaryPositions);
-    // renderHouseInfoTable();
-
-  }
-
   const navamsaPositions = calculateNavamsaPositions(planetaryPositions);
   displayNavamsaChart(navamsaPositions, dateData);
   displayVedicInfo(year, month, day, hour, minutes, city);
@@ -486,18 +433,13 @@ function extractTimeData(hour, minutes, cityInfo) {
   </div>
   <div id="vedicInfo" style="text-align:center; margin-top:20px; font-size:16px; font-family:Arial, sans-serif;">
   </div>
-<div id="panchangInfo" style="text-align:center; margin-top:20px; font-size:16px;"></div>
 
-<div id="houseInfoPanel" 
-     style="margin-top:20px; 
-            border:1px solid #ddd; 
-            padding:10px; 
-            background:#fafafa;">
-</div>
 
 <div class="result-dasha-container">
   <div id="result"></div>
   <div id="dashasContainer"></div>
+  <div id="antaraContainer"></div>
+
 </div>
 
 </body>

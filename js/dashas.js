@@ -95,186 +95,258 @@ function findCurrentDashaIndex(dashas, offsetNow) {
 
 // Build a data structure of dashas + sub-lords from the dlist array
 function buildDashaData(birthJD, natalDashaIndex) {
-  // dlnamtam = ["கேது","சுக்கிரன்","சூரியன்","சந்திரன்","செவ்வாய்","ராகு","குரு","சனி","புதன்"];
   const dashas = [];
   for (let i = 0; i < 9; i++) {
     let mLordIndex = (natalDashaIndex + i) % 9;
-    let mLordName = dlnamtam[mLordIndex];
-
     let startOffset = dlist[i * 9];
     let endOffset = (i < 8) ? dlist[(i + 1) * 9] : null;
 
-    // sub-lords
     let subLords = [];
     let bp = mLordIndex;
     for (let j = 0; j < 9; j++) {
+      let subStartOffset = dlist[i * 9 + j];
+      let subEndOffset = (j < 8) ? dlist[i * 9 + j + 1] : endOffset;
+
+      let antaraLords = [];
+      let ap = bp;
+      let antaraDuration = (subEndOffset - subStartOffset) / 120;
+
+      let antaraOffset = subStartOffset;
+      for (let k = 0; k < 9; k++) {
+        let antaraLength = dashyr[ap] * antaraDuration;
+        antaraLords.push({
+          lord: dlnamtam[ap],
+          startOffset: antaraOffset,
+          endOffset: antaraOffset + antaraLength
+        });
+        antaraOffset += antaraLength;
+        ap = (ap + 1) % 9;
+      }
+
       subLords.push({
         lord: dlnamtam[bp],
-        startOffset: dlist[i * 9 + j],
-        endOffset: (j < 8) ? dlist[i * 9 + j + 1] : endOffset
+        startOffset: subStartOffset,
+        endOffset: subEndOffset,
+        antaras: antaraLords
       });
       bp = (bp + 1) % 9;
     }
 
     dashas.push({
-      lord: mLordName,
-      startOffset: startOffset,
-      endOffset: endOffset,
-      subLords: subLords
+      lord: dlnamtam[mLordIndex],
+      startOffset,
+      endOffset,
+      subLords
     });
   }
   return dashas;
 }
 
+
 /**
  * Generate side-by-side HTML tables for Mahadasha & Bhukti details.
  */
 function makeDashaTables(dashas, birthJD, offsetNow) {
-  let currIdx = findCurrentDashaIndex(dashas, offsetNow);
+  const currDashaIdx = findCurrentDashaIndex(dashas, offsetNow);
 
-  let dashaTable = '<h4>தசை வரிசை</h4>' +
-                   '<table><thead><tr>' +
-                   '<th>மஹாதசை</th>' +
-                   '<th>தொடக்கம்</th>' +
-                   '<th>முடிவு</th>' +
-                   '</tr></thead><tbody>';
+  let dashaTable = `<h4>தசை வரிசை</h4><table><thead><tr><th>மஹாதசை</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>`;
 
-  for (let i = 0; i < dashas.length; i++) {
-    let startDate = (dashas[i].startOffset !== null)
-      ? jul2dateDDMMYYYY(birthJD + dashas[i].startOffset)
-      : '---';
-    let endDate = (dashas[i].endOffset !== null)
-      ? jul2dateDDMMYYYY(birthJD + dashas[i].endOffset)
-      : '---';
+  dashas.forEach((dasha, i) => {
+    const highlight = (i === currDashaIdx) ? ' style="background-color: #ccffcc;"' : '';
+    const endDate = (dasha.endOffset !== null)
+      ? jul2dateDDMMYYYY(birthJD + dasha.endOffset)
+      : '—';
+    dashaTable += `<tr${highlight} onclick="showBhuktis(${i})">
+      <td>${dasha.lord}</td>
+      <td>${jul2dateDDMMYYYY(birthJD + dasha.startOffset)}</td>
+      <td>${endDate}</td>
+    </tr>`;
+  });
 
-    let rowStyle = (i === currIdx) ? ' style="background-color: #ccffcc;"' : '';
+  dashaTable += `</tbody></table>`;
 
-    dashaTable += '<tr' + rowStyle + ' onclick="showBhuktis(' + i + ')">' +
-                  '<td>' + dashas[i].lord + '</td>' +
-                  '<td>' + startDate + '</td>' +
-                  '<td>' + endDate + '</td>' +
-                  '</tr>';
-
-  }
-  dashaTable += '</tbody></table>';
-
-  // Current Mahadasha's Bhukti table
+  // Bhukti table
   let bhuktiTable = '';
-  if (currIdx === -1) {
-    // No current dasha
-    bhuktiTable = '<table><thead><tr><th colspan="3">தற்போதைய தசை ஏதுமில்லை</th></tr></thead></table>';
+  let antaraTable = '';
+
+  if (currDashaIdx >= 0) {
+    const subs = dashas[currDashaIdx].subLords;
+    const currBhuktiIdx = subs.findIndex(sub => offsetNow >= sub.startOffset && offsetNow < sub.endOffset);
+
+    bhuktiTable = `<h4>${dashas[currDashaIdx].lord} தசை: புக்தி வரிசை</h4><table><thead><tr><th>புக்தி</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>`;
+
+    subs.forEach((sub, j) => {
+      const highlight = (j === currBhuktiIdx) ? ' style="background-color: #ccffcc;"' : '';
+      bhuktiTable += `<tr${highlight} onclick="showAntaras(${currDashaIdx}, ${j})">
+        <td>${sub.lord}</td>
+        <td>${jul2dateDDMMYYYY(birthJD + sub.startOffset)}</td>
+        <td>${jul2dateDDMMYYYY(birthJD + sub.endOffset)}</td>
+      </tr>`;
+    });
+
+    bhuktiTable += `</tbody></table>`;
+
+    // Antara table (initial load)
+    if (currBhuktiIdx >= 0) {
+      const antaras = subs[currBhuktiIdx].antaras;
+      const currAntaraIdx = antaras.findIndex(antara => offsetNow >= antara.startOffset && offsetNow < antara.endOffset);
+
+      antaraTable = `<h4>${dashas[currDashaIdx].lord} - ${subs[currBhuktiIdx].lord} அந்தரம் வரிசை</h4><table><thead><tr><th>அந்தரம்</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>`;
+      
+      antaras.forEach((antara, k) => {
+        const highlight = (k === currAntaraIdx) ? ' style="background-color: #ccffcc;"' : '';
+        antaraTable += `<tr${highlight}>
+          <td>${antara.lord}</td>
+          <td>${jul2dateDDMMYYYY(birthJD + antara.startOffset)}</td>
+          <td>${jul2dateDDMMYYYY(birthJD + antara.endOffset)}</td>
+        </tr>`;
+      });
+      
+      antaraTable += `</tbody></table>`;
+    } else {
+      antaraTable = `<table><thead><tr><th colspan="3">தற்போதைய அந்தரம் ஏதுமில்லை</th></tr></thead></table>`;
+    }
   } else {
-    let subs = dashas[currIdx].subLords;
-    let currentDashaLord = dashas[currIdx].lord;
-
-    let currBhukti = -1;
-    for (let j = 0; j < subs.length; j++) {
-      let sStart = subs[j].startOffset ?? 999999;
-      let sEnd = subs[j].endOffset ?? 999999;
-      if (sStart <= offsetNow && offsetNow < sEnd) {
-        currBhukti = j;
-        break;
-      }
-    }
-
-    bhuktiTable = '<h4>' + currentDashaLord + ' தசை: புக்தி வரிசை</h4>' +
-                  '<table><thead><tr>' +
-                  '<th>புக்தி</th>' +
-                  '<th>தொடக்கம்</th>' +
-                  '<th>முடிவு</th>' +
-                  '</tr></thead><tbody>';
-
-    for (let j = 0; j < subs.length; j++) {
-      let subStart = (subs[j].startOffset !== null)
-        ? jul2dateDDMMYYYY(birthJD + subs[j].startOffset)
-        : '---';
-      let subEnd = (subs[j].endOffset !== null)
-        ? jul2dateDDMMYYYY(birthJD + subs[j].endOffset)
-        : '---';
-
-      let rowStyle = (j === currBhukti) ? ' style="background-color: #ccffcc;"' : '';
-      bhuktiTable += '<tr' + rowStyle + '>' +
-                     '<td>' + subs[j].lord + '</td>' +
-                     '<td>' + subStart + '</td>' +
-                     '<td>' + subEnd + '</td>' +
-                     '</tr>';
-    }
-    bhuktiTable += '</tbody></table>';
+    bhuktiTable = `<table><thead><tr><th colspan="3">தற்போதைய தசை ஏதுமில்லை</th></tr></thead></table>`;
+    antaraTable = `<table><thead><tr><th colspan="3">தற்போதைய அந்தரம் ஏதுமில்லை</th></tr></thead></table>`;
   }
 
-  // Return side-by-side in a container
-  return '<div class="dasha-container">' +
-           '<div class="dasha-item">' + dashaTable + '</div>' +
-           '<div class="dasha-item">' + bhuktiTable + '</div>' +
-         '</div>';}
+  // Return explicitly Dasha-Bhukti-Antara side-by-side
+  return `
+  <div class="dasha-container">
+    <div class="dasha-item">${dashaTable}</div>
+    <div class="dasha-item">${bhuktiTable}</div>
+    <div class="dasha-item" id="antaraContainer">${antaraTable}</div>
+  </div>`;
+}
+
 
 function showBhuktis(mahadashaIndex) {
   if (!window._storedDashas || !window._birthJD) return;
 
-  let dashas = window._storedDashas;
-  let birthJD = window._birthJD;
-  let todayJD = getSystemJD();
-  let offsetNow = todayJD - birthJD;
+  const dashas = window._storedDashas;
+  const birthJD = window._birthJD;
+  const todayJD = getSystemJD();
+  const offsetNow = todayJD - birthJD;
 
-  let subs = dashas[mahadashaIndex].subLords;
-  let currentDashaLord = dashas[mahadashaIndex].lord;
+  const subs = dashas[mahadashaIndex].subLords;
+  const currentDashaLord = dashas[mahadashaIndex].lord;
 
-  // Find which bhukti is running (if any) for the selected mahadasha
-  let currBhukti = -1;
-  for (let j = 0; j < subs.length; j++) {
-    let sStart = subs[j].startOffset ?? 999999;
-    let sEnd = subs[j].endOffset ?? 999999;
-    if (sStart <= offsetNow && offsetNow < sEnd) {
-      currBhukti = j;
-      break;
-    }
+  // Find current Bhukti running now, if any
+  let currBhukti = subs.findIndex(sub => 
+    offsetNow >= sub.startOffset && offsetNow < sub.endOffset
+  );
+
+  // Highlight selected Mahadasha
+  const mahaTable = document.querySelector('.dasha-container .dasha-item:first-child table');
+  if (mahaTable) {
+    const mahaRows = mahaTable.querySelectorAll('tbody tr');
+    mahaRows.forEach((row, idx) => {
+      row.style.backgroundColor = (idx === mahadashaIndex) ? '#ccffcc' : '';
+    });
   }
 
-  let bhuktiTable = '<h4>' + currentDashaLord + ' தசை: புக்தி வரிசை</h4>' +
-                    '<table><thead><tr>' +
-                    '<th>புக்தி</th>' +
-                    '<th>தொடக்கம்</th>' +
-                    '<th>முடிவு</th>' +
-                    '</tr></thead><tbody>';
+  // Build Bhukti table with clickable rows for Antara
+  let bhuktiTable = `<h4>${currentDashaLord} தசை: புக்தி வரிசை</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>புக்தி</th>
+          <th>தொடக்கம்</th>
+          <th>முடிவு</th>
+        </tr>
+      </thead>
+      <tbody>`;
 
   for (let j = 0; j < subs.length; j++) {
-    let subStart = (subs[j].startOffset !== null)
+    const subStart = (subs[j].startOffset !== null)
       ? jul2dateDDMMYYYY(birthJD + subs[j].startOffset)
       : '---';
-    let subEnd = (subs[j].endOffset !== null)
+    const subEnd = (subs[j].endOffset !== null)
       ? jul2dateDDMMYYYY(birthJD + subs[j].endOffset)
       : '---';
 
-    let rowStyle = (j === currBhukti) ? ' style="background-color: #ccffcc;"' : '';
+    const rowStyle = (j === currBhukti) ? ' style="background-color: #ccffcc;"' : '';
 
-    bhuktiTable += '<tr' + rowStyle + '>' +
-                   '<td>' + subs[j].lord + '</td>' +
-                   '<td>' + subStart + '</td>' +
-                   '<td>' + subEnd + '</td>' +
-                   '</tr>';
+    bhuktiTable += `<tr${rowStyle} onclick="showAntaras(${mahadashaIndex}, ${j})">
+      <td>${subs[j].lord}</td>
+      <td>${subStart}</td>
+      <td>${subEnd}</td>
+    </tr>`;
   }
+
   bhuktiTable += '</tbody></table>';
 
-  // Replace only the second column (bhukti table)
-  const container = document.querySelector('.dasha-container');
-  if (container && container.children.length === 2) {
-    container.children[1].innerHTML = bhuktiTable;
+  // Replace Bhukti container content
+  const dashaContainer = document.querySelector('.dasha-container');
+  if (dashaContainer && dashaContainer.children.length >= 2) {
+    dashaContainer.children[1].innerHTML = bhuktiTable;
   }
 
-  // Highlight the clicked mahadasha row
-  const mahaTable = container.children[0].querySelector('table');
-  if (mahaTable) {
-    const rows = mahaTable.querySelectorAll('tbody tr');
-    rows.forEach((row, idx) => {
-      if (idx === mahadashaIndex) {
-        row.style.backgroundColor = '#ccffcc';  // Light green
-      } else {
-        row.style.backgroundColor = '';          // Remove background
-      }
-    });
+  // Automatically refresh Antara for the currently running Bhukti or clear if none
+  const antaraDiv = document.getElementById('antaraContainer');
+  if (currBhukti >= 0) {
+    showAntaras(mahadashaIndex, currBhukti);
+  } else {
+    antaraDiv.innerHTML = '';
   }
 }
 
+
+function showAntaras(mahadashaIndex, bhuktiIndex) {
+  if (!window._storedDashas || !window._birthJD) return;
+
+  const dashas = window._storedDashas;
+  const birthJD = window._birthJD;
+  const todayJD = getSystemJD();
+  const offsetNow = todayJD - birthJD;
+
+  const antaras = dashas[mahadashaIndex].subLords[bhuktiIndex].antaras;
+  const currentDashaLord = dashas[mahadashaIndex].lord;
+  const currentBhuktiLord = dashas[mahadashaIndex].subLords[bhuktiIndex].lord;
+
+  // Find current Antara
+  let currAntara = antaras.findIndex(antara =>
+    offsetNow >= antara.startOffset && offsetNow < antara.endOffset
+  );
+
+  let antaraTable = `<h4>${currentDashaLord} - ${currentBhuktiLord} அந்தரம் வரிசை</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>அந்தரம்</th>
+          <th>தொடக்கம்</th>
+          <th>முடிவு</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  for (let k = 0; k < antaras.length; k++) {
+    const antaraStart = jul2dateDDMMYYYY(birthJD + antaras[k].startOffset);
+    const antaraEnd = jul2dateDDMMYYYY(birthJD + antaras[k].endOffset);
+
+    const rowStyle = (k === currAntara) ? ' style="background-color: #ccffcc;"' : '';
+
+    antaraTable += `<tr${rowStyle}>
+      <td>${antaras[k].lord}</td>
+      <td>${antaraStart}</td>
+      <td>${antaraEnd}</td>
+    </tr>`;
+  }
+
+  antaraTable += '</tbody></table>';
+
+  const antaraDiv = document.getElementById('antaraContainer');
+  if (antaraDiv) {
+    antaraDiv.innerHTML = antaraTable;
+  }
+
+  // Highlight selected Bhukti
+  const bhuktiRows = document.querySelectorAll('.dasha-container .dasha-item:nth-child(2) tbody tr');
+  bhuktiRows.forEach((row, idx) => {
+    row.style.backgroundColor = (idx === bhuktiIndex) ? '#ccffcc' : '';
+  });
+}
 
 
 /**

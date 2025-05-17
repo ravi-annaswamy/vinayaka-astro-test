@@ -42,7 +42,7 @@ function drawSouthChart(x, y, w, h, planetDetails, currentDate, currentTime, cur
     const houseIndex = Math.floor((planet.longitude % 360) / 30);
     const glyph = glyphMapping[planet.name] || planet.name;
     const degree = Math.ceil(planet.longitude % 30); // Round up to whole number
-    housePlanets[houseIndex].push({ name: planet.name, glyph, degree });
+    housePlanets[houseIndex].push({ glyph, degree });
   });
 
   // Sort planets in each house as specified
@@ -73,7 +73,6 @@ function drawSouthChart(x, y, w, h, planetDetails, currentDate, currentTime, cur
   housePositions.forEach((pos, index) => {
     const xd = x + pos.col * mx;
     const yd = y + pos.row * my;
-
     let fillColor = 'none';
     if (lagnaIndex !== null) {
       if (index === lagnaIndex) {
@@ -84,22 +83,7 @@ function drawSouthChart(x, y, w, h, planetDetails, currentDate, currentTime, cur
         fillColor = '#e8f6e9';
       }
     }
-
-
-  // Calculate relative house number (Lagna is 1)
-  const relativeHouseNumber = ((index - lagnaIndex + 12) % 12) + 1;
-
-  // Clearly add data-house attribute
-const appliedFill = fillColor === 'none' ? 'transparent' : fillColor;
-s += 
-  `<rect
-     data-house="${relativeHouseNumber}"
-     x="${xd}" y="${yd}"
-     width="${mx}" height="${my}"
-     fill="${appliedFill}"
-     stroke="black" stroke-width="2"
-     pointer-events="all"
-/>\n`;
+    s += `<rect x="${xd}" y="${yd}" width="${mx}" height="${my}" style="fill:${fillColor};stroke:black;stroke-width:2"/>\n`;
   });
 
   const rowHeight = 20;
@@ -116,20 +100,20 @@ s +=
         const degreeX = cellX + (mx * 0.75);
         const glyphY = cellY + verticalOffset + (j * rowHeight) + (rowHeight / 2);
         // Planet Glyph
-        s += `<text data-planet="${planets[j].name}" pointer-events="none" x="${glyphX}" y="${glyphY}" fill="black" font-size="18" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${planets[j].glyph}</text>\n`;
+        s += `<text x="${glyphX}" y="${glyphY}" fill="black" font-size="18" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${planets[j].glyph}</text>\n`;
         // Planet Degree (rounded up)
-        s += `<text data-planet="${planets[j].name}" pointer-events="none" x="${degreeX}" y="${glyphY}" fill="black" font-size="14" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${planets[j].degree}°</text>\n`;
+        s += `<text x="${degreeX}" y="${glyphY}" fill="black" font-size="14" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${planets[j].degree}°</text>\n`;
       }
     }
   }
 
   const centerX = x + w / 2;
   const centerY = y + h / 2;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY - 20}" fill="black" font-size="11" font-family="monospace" text-anchor="middle">ஸ்ரீ கற்பக விநாயகர் துணை</text>\n`;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY}" fill="blue" font-size="15" font-family="monospace" font-weight="bold" text-anchor="middle">ராசி</text>\n`;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY + 20}" fill="black" font-size="16" font-family="monospace" text-anchor="middle">${currentDate}</text>\n`;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY + 40}" fill="black" font-size="16" font-family="monospace" text-anchor="middle">${currentTime}</text>\n`;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY + 60}" fill="black" font-size="14" font-family="monospace" text-anchor="middle">${currentCity}</text>\n`;
+  s += `<text x="${centerX}" y="${centerY - 20}" fill="black" font-size="11" font-family="monospace" text-anchor="middle">ஸ்ரீ கற்பக விநாயகர் துணை</text>\n`;
+  s += `<text x="${centerX}" y="${centerY}" fill="blue" font-size="15" font-family="monospace" font-weight="bold" text-anchor="middle">ராசி</text>\n`;
+  s += `<text x="${centerX}" y="${centerY + 20}" fill="black" font-size="16" font-family="monospace" text-anchor="middle">${currentDate}</text>\n`;
+  s += `<text x="${centerX}" y="${centerY + 40}" fill="black" font-size="16" font-family="monospace" text-anchor="middle">${currentTime}</text>\n`;
+  s += `<text x="${centerX}" y="${centerY + 60}" fill="black" font-size="14" font-family="monospace" text-anchor="middle">${currentCity}</text>\n`;
   s += '</g>\n';
 
   return s;
@@ -204,7 +188,7 @@ function drawNavamsaChart(x, y, w, h, planetDetails) {
         const col = j % 2;
         const glyphX = (glyphs.length === 1) ? cellX + (mx / 2) : cellX + (col === 0 ? (mx * 0.30) : (mx * 0.70));
         const glyphY = cellY + verticalOffset + (row * rowHeight) + (rowHeight / 2);
-        s += `<text pointer-events="none" x="${glyphX}" y="${glyphY}" fill="black" font-size="18" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${glyphs[j]}</text>\n`;
+        s += `<text x="${glyphX}" y="${glyphY}" fill="black" font-size="18" font-family="monospace" text-anchor="middle" dominant-baseline="middle">${glyphs[j]}</text>\n`;
       }
     }
   }
@@ -212,7 +196,7 @@ function drawNavamsaChart(x, y, w, h, planetDetails) {
   // Center the Navamsa chart label.
   const centerX = x + w / 2;
   const centerY = y + h / 2;
-  s += `<text pointer-events="none" x="${centerX}" y="${centerY}" fill="blue" font-size="16" font-family="monospace" font-weight="bold" font-color="blue" text-anchor="middle">நவாம்சம்</text>\n`;
+  s += `<text x="${centerX}" y="${centerY}" fill="blue" font-size="16" font-family="monospace" font-weight="bold" font-color="blue" text-anchor="middle">நவாம்சம்</text>\n`;
   s += '</g>\n';
   return s;
 }
