@@ -109,12 +109,15 @@
     }
   }
 
- .dasha-container {
+.dasha-container {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  /* margin-top: 20px; --> removed */
 }
+.dasha-container .dasha-item {
+  flex: 1 1 260px;
+}
+
 .dasha-container table {
   border-collapse: collapse;
   min-width: 200px;
@@ -141,7 +144,6 @@
 }
 
 #result, #dashasContainer, #antaraContainer {
-  flex: 1 1 250px;
   min-width: 220px;
   padding: 8px;
   border: 1px solid #eeeeee;
@@ -151,6 +153,13 @@
   font-size: 13px;
 }
 
+#result {
+  flex: 1 1 250px;
+}
+
+#dashasContainer {
+  flex: 1 1 100%;
+}
 </style>
 
 
@@ -185,9 +194,9 @@ function displayVedicInfo(year, month, day, hour, minute, city) {
   );
 
   document.getElementById('vedicInfo').innerHTML = `
-    <p>பிறந்த தேதி: ${dateStr}, நேரம்: ${birthTimeStr}</p>
-    <p>சூரிய உதயம்: ${sunriseStr}, அஸ்தமனம்: ${sunsetStr}</p>
-    <p>வேதவழி நாள் பொழுது: ${vedicWeekday}</p>
+    நாள்: ${dateStr} ${birthTimeStr}
+     | சூரிய உதயம்: ${sunriseStr}, அஸ்தமனம்: ${sunsetStr}
+     | ${vedicWeekday} பொழுது</p>
 ` ;
 }
 
